@@ -1,6 +1,5 @@
-<<<<<<< HEAD
 services:
-  # Banco de Dados do RAG Service
+  # BANCOS DE DADOS E LLM
   rag-db:
     image: pgvector/pgvector:pg16
     container_name: rag_db
@@ -14,9 +13,8 @@ services:
       - rag_db_data:/var/lib/postgresql/data
       - ./db-init/rag-db:/docker-entrypoint-initdb.d
     networks:
-      - projeto-network
+      - agro-network
 
-  # Banco de Dados do Vision Service
   vision-db:
     image: pgvector/pgvector:pg16
     container_name: vision_db
@@ -30,37 +28,26 @@ services:
       - vision_db_data:/var/lib/postgresql/data
       - ./db-init/vision-db:/docker-entrypoint-initdb.d
     networks:
-      - projeto-network
+      - agro-network
 
-  # Container do LLM (Ollama)
   llm-service:
     image: ollama/ollama:latest
     container_name: llm_service
     ports:
-      - "11434:11434" # Expõe a API do LLM na porta 11434
+      - "11434:11434"
     volumes:
-      - ollama_storage:/root/.ollama # Guarda os modelos baixados para não perder ao reiniciar
+      - ollama_storage:/root/.ollama
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu] # Passa a RTX 5060 para dentro do container
+              capabilities: [gpu]
     networks:
-      - projeto-network
+      - agro-network
 
-volumes:
-  rag_db_data:
-  vision_db_data:
-  ollama_storage:
-
-networks:
-  projeto-network:
-=======
-version: '3.8'
-
-services:
+  # SERVIÇOS
   gateway-ws:
     build: 
       context: ./services/gateway-ws
@@ -85,8 +72,12 @@ services:
       - agro-network
     restart: unless-stopped
 
+volumes:
+  rag_db_data:
+  vision_db_data:
+  ollama_storage:
+
 networks:
   agro-network:
     name: agro-network
->>>>>>> 85f1b3dedc1262a4e639024e6df2efc9565de7cc
     driver: bridge
