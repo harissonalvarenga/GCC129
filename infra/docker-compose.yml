@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  gateway-ws:
+    build: 
+      context: ./services/gateway-ws
+      dockerfile: Dockerfile
+    container_name: agro-gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - agro-network
+    restart: unless-stopped
+
+  mcp-server:
+    build: 
+      context: ./services/mcp-server
+      dockerfile: Dockerfile
+    container_name: agro-mcp
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    networks:
+      - agro-network
+    restart: unless-stopped
+
+networks:
+  agro-network:
+    name: agro-network
+    driver: bridge
