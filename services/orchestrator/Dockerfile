@@ -8,6 +8,6 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 8002
+EXPOSE 8000
 
-CMD ["node", "src/main.ts"]
+CMD ["npm", "start"]
