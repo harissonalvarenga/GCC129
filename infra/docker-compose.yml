@@ -1,14 +1,15 @@
 services:
-  # BANCOS DE DADOS E LLM
+  # ===================== BANCOS DE DADOS E LLM =====================
   rag-db:
     image: pgvector/pgvector:pg16
     container_name: rag_db
+    restart: "no"
     environment:
       POSTGRES_USER: rag_user
       POSTGRES_PASSWORD: rag_password
       POSTGRES_DB: rag_database
     ports:
-      - "5432:5432" 
+      - "5432:5432"
     volumes:
       - rag_db_data:/var/lib/postgresql/data
       - ./db-init/rag-db:/docker-entrypoint-initdb.d
@@ -18,6 +19,7 @@ services:
   vision-db:
     image: pgvector/pgvector:pg16
     container_name: vision_db
+    restart: "no"
     environment:
       POSTGRES_USER: vision_user
       POSTGRES_PASSWORD: vision_password
@@ -33,6 +35,7 @@ services:
   llm-service:
     image: ollama/ollama:latest
     container_name: llm_service
+    restart: "no"
     ports:
       - "11434:11434"
     volumes:
@@ -47,21 +50,46 @@ services:
     networks:
       - agro-network
 
-  # SERVIÇOS
+  # ===================== SERVIÇOS =====================
+  # Gateway WebSocket: ponto de entrada do agricultor (porta 8080).
   gateway-ws:
-    build: 
-      context: ./services/gateway-ws
+    build:
+      context: ../services/gateway
       dockerfile: Dockerfile
     container_name: agro-gateway
     ports:
       - "8080:8080"
+    depends_on:
+      - orchestrator
     networks:
       - agro-network
-    restart: unless-stopped
+    restart: "no"
 
+  # Orquestrador: classifica a intenção, chama os serviços e SINTETIZA (Padrão B).
+  orchestrator:
+    build:
+      context: ../services/orchestrator
+      dockerfile: Dockerfile
+    container_name: agro-orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      LLM_URL: http://llm-service:11434
+      LLM_MODEL: llama3.1:8b
+      MCP_URL: http://mcp-server:3001
+    depends_on:
+      - rag-service
+      - vision-service
+      - mcp-server
+      - llm-service
+    networks:
+      - agro-network
+    restart: "no"
+
+  # MCP Server: expõe ferramentas (clima) via Model Context Protocol (SSE).
   mcp-server:
-    build: 
-      context: ./services/mcp-server
+    build:
+      context: ../services/mcp-server
       dockerfile: Dockerfile
     container_name: agro-mcp
     ports:
@@ -70,7 +98,55 @@ services:
       - ./.env
     networks:
       - agro-network
-    restart: unless-stopped
+    restart: "no"
+
+  # RAG de texto: retriever puro (embed E5-large na CPU + busca vetorial).
+  rag-service:
+    build:
+      context: ../services/rag-service
+      dockerfile: Dockerfile
+    container_name: agro-rag
+    ports:
+      - "8001:8001"
+    environment:
+      RAG_DB_URI: postgresql://rag_user:rag_password@rag-db:5432/rag_database
+    depends_on:
+      - rag-db
+    networks:
+      - agro-network
+    restart: "no"
+
+  # Visão: recebe a foto e gera um diagnóstico textual via modelo de visão do Ollama.
+  vision-service:
+    build:
+      context: ../services/vision-server
+      dockerfile: Dockerfile
+    container_name: agro-vision
+    ports:
+      - "8004:8004"
+    environment:
+      LLM_URL: http://llm-service:11434
+      # llava (clip+llama): roda no engine atual do Ollama. O llama3.2-vision
+      # usa a arquitetura 'mllama', não suportada nesta build (erro mllama).
+      VISION_MODEL: llava
+    depends_on:
+      - llm-service
+    networks:
+      - agro-network
+    restart: "no"
+
+  # Frontend: interface web de chat (nginx estático, sem build).
+  # Edite ou adicione arquivos em services/frontend/html/ — recarregue o browser.
+  frontend:
+    image: nginx:alpine
+    container_name: agro-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ../services/frontend/html:/usr/share/nginx/html:ro
+    networks:
+      - agro-network
+    restart: "no"
 
 volumes:
   rag_db_data:
