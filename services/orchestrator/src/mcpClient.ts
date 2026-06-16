@@ -15,9 +15,13 @@ function getClient(): Promise<Client> {
         { name: "orchestrator", version: "1.0.0" },
         { capabilities: {} }
       );
+      transport.onclose = () => { clientPromise = null; };
       await client.connect(transport);
       return client;
-    })();
+    })().catch((err) => {
+      clientPromise = null;
+      throw err;
+    });
   }
   return clientPromise;
 }

@@ -9,4 +9,5 @@ export interface Chunk {
   content: string;
   page: number | null;
   distance: number;
+  rerank_score?: number | null;
 }
