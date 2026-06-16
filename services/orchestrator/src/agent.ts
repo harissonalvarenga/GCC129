@@ -11,11 +11,20 @@ export function classifyIntent(
 
   const text = message.toLowerCase();
 
-  if (
-    text.includes("clima") ||
-    text.includes("chuva") ||
-    text.includes("temperatura")
-  ) {
+  const weatherKeywords = [
+    "clima", "climático", "climática",
+    "tempo",       // "como está o tempo", "baseado no tempo"
+    "previsão",    // "previsão do tempo"
+    "temperatura",
+    "chuva", "chover", "chuvoso", "precipitação",
+    "calor", "frio", "geada",
+    "sol", "ensolarado", "nublado",
+    "vento", "ventoso",
+    "umidade",
+    "seca",        // drought / dry conditions
+  ];
+
+  if (weatherKeywords.some(kw => text.includes(kw))) {
     return "weather";
   }
 
