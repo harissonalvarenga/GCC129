@@ -4,250 +4,507 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agro Assistente</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --primary:       #16a34a;
-      --primary-dark:  #15803d;
-      --primary-light: #dcfce7;
-      --bg:            #f6f7f6;
-      --surface:       #ffffff;
-      --border:        #e4e7e4;
+      --green-600:     #16a34a;
+      --green-700:     #15803d;
+      --green-50:      #f0fdf4;
+      --green-100:     #dcfce7;
+      --bg:            #ffffff;
+      --bg-alt:        #f9fafb;
+      --bg-hover:      #f3f4f6;
+      --border:        #e5e7eb;
+      --border-light:  #f3f4f6;
       --text:          #111827;
-      --muted:         #6b7280;
-      --radius:        18px;
-      --radius-sm:     8px;
-      --shadow:        0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --text-secondary:#6b7280;
+      --text-tertiary: #9ca3af;
+      --radius:        12px;
+      --radius-lg:     16px;
+      --radius-xl:     24px;
+      --max-w:         720px;
     }
 
-    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif; background: var(--bg); color: var(--text); }
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
 
     .app {
-      display: flex; flex-direction: column;
-      height: 100vh; max-width: 780px;
-      margin: 0 auto; background: var(--surface);
-      box-shadow: 0 0 0 1px var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
     }
 
-    /* Header */
+    /* ── Header ── */
     .header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+      z-index: 10;
     }
-    .logo {
-      width: 38px; height: 38px; background: var(--primary);
-      border-radius: 11px; display: flex; align-items: center;
-      justify-content: center; font-size: 21px; flex-shrink: 0;
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .header-title { font-size: 15px; font-weight: 600; line-height: 1.2; }
-    .header-sub   { font-size: 12px; color: var(--muted); }
-    .status {
-      margin-left: auto; display: flex; align-items: center;
-      gap: 6px; font-size: 12px; color: var(--muted);
+    .header-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--green-600);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; transition: background .3s; }
-    .dot.ok  { background: var(--primary); }
+    .header-text h1 {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .header-text span {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+    .header-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      transition: background .3s;
+    }
+    .dot.ok  { background: var(--green-600); }
     .dot.err { background: #ef4444; }
 
-    /* Messages */
+    /* ── Messages area ── */
     .messages {
-      flex: 1; overflow-y: auto; padding: 28px 20px;
-      display: flex; flex-direction: column; gap: 28px;
+      flex: 1;
+      overflow-y: auto;
       scroll-behavior: smooth;
     }
 
-    /* Welcome */
-    .welcome {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-align: center; flex: 1; padding: 40px 20px; gap: 14px;
+    .msg {
+      padding: 24px 0;
     }
-    .welcome-icon { font-size: 54px; }
-    .welcome h2   { font-size: 22px; font-weight: 600; }
-    .welcome p    { color: var(--muted); max-width: 380px; line-height: 1.65; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
-    .chip {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 20px; padding: 8px 16px; font-size: 13.5px; cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s;
+    .msg + .msg {
+      border-top: 1px solid var(--border-light);
     }
-    .chip:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
-
-    /* Message rows */
-    .msg { display: flex; gap: 11px; max-width: 100%; }
-    .msg.user { flex-direction: row-reverse; }
-
-    .avatar {
-      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 17px; background: var(--primary-light); align-self: flex-end;
-    }
-    .msg.user .avatar {
-      background: var(--primary); color: #fff;
-      font-size: 11px; font-weight: 700; letter-spacing: .3px;
+    .msg.assistant {
+      background: var(--bg-alt);
     }
 
-    .bubble { max-width: min(72%, 580px); }
-
-    .msg.user .body {
-      background: var(--primary); color: #fff;
-      border-radius: var(--radius) var(--radius) 4px var(--radius);
-      padding: 11px 16px; font-size: 15px; line-height: 1.55; word-break: break-word;
+    .msg-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      gap: 16px;
     }
-    .user-thumb { margin-bottom: 6px; border-radius: 12px; overflow: hidden; max-width: 220px; }
-    .user-thumb img { width: 100%; display: block; }
 
-    .msg.assistant .body {
-      background: var(--bg);
-      border-radius: var(--radius) var(--radius) var(--radius) 4px;
-      padding: 14px 18px; font-size: 15px; line-height: 1.65;
-      word-break: break-word; box-shadow: var(--shadow);
-      white-space: pre-wrap;
+    .msg-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
-    /* formatted output after streaming finishes */
-    .msg.assistant .body.formatted { white-space: normal; }
-    .msg.assistant .body p   { margin: 6px 0; }
-    .msg.assistant .body p:first-child { margin-top: 0; }
-    .msg.assistant .body p:last-child  { margin-bottom: 0; }
-    .msg.assistant .body ol  { padding-left: 22px; margin: 8px 0; }
-    .msg.assistant .body li  { margin: 5px 0; }
-    .msg.assistant .body strong { font-weight: 600; }
+    .msg.user .msg-avatar {
+      background: var(--green-600);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .msg.assistant .msg-avatar {
+      background: var(--green-100);
+    }
 
-    /* Cursor blink while streaming */
+    .msg-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .msg-role {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .msg.user .msg-role { color: var(--text); }
+    .msg.assistant .msg-role { color: var(--green-700); }
+
+    .msg-body {
+      font-size: 15px;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+    .msg-body p { margin: 8px 0; }
+    .msg-body p:first-child { margin-top: 0; }
+    .msg-body p:last-child { margin-bottom: 0; }
+    .msg-body ol { padding-left: 20px; margin: 10px 0; }
+    .msg-body li { margin: 6px 0; line-height: 1.6; }
+    .msg-body strong { font-weight: 600; }
+
+    .user-image {
+      margin-top: 8px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      max-width: 280px;
+    }
+    .user-image img {
+      width: 100%;
+      display: block;
+    }
+
+    /* ── Streaming cursor ── */
     .streaming::after {
-      content: '▋';
+      content: '\25CB';
       display: inline-block;
-      animation: blink .8s step-end infinite;
-      color: var(--primary);
+      animation: pulse 1.2s ease-in-out infinite;
+      color: var(--green-600);
+      margin-left: 2px;
     }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    @keyframes pulse {
+      0%, 100% { opacity: .3; }
+      50% { opacity: 1; }
+    }
 
-    /* Intent badge */
+    /* ── Intent badge ── */
     .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; font-weight: 500;
-      padding: 3px 9px; border-radius: 20px; margin-bottom: 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      letter-spacing: .01em;
     }
-    .badge.rag     { background: #dbeafe; color: #1d4ed8; }
-    .badge.vision  { background: #fce7f3; color: #be185d; }
-    .badge.weather { background: #fef9c3; color: #854d0e; }
+    .badge.rag     { background: #eff6ff; color: #1e40af; }
+    .badge.vision  { background: #fdf2f8; color: #9d174d; }
+    .badge.weather { background: #fefce8; color: #854d0e; }
 
-    /* Vision diagnosis */
-    .diagnosis {
-      font-size: 13px; color: #7c3aed; background: #f5f3ff;
-      border-left: 3px solid #a78bfa;
-      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-      padding: 9px 12px; margin-bottom: 11px;
-    }
-    .diagnosis strong {
-      display: block; margin-bottom: 4px;
-      font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
-    }
-
-    /* Weather card */
+    /* ── Weather card ── */
     .weather-card {
-      background: #fefce8; border: 1px solid #fde68a;
-      border-radius: var(--radius-sm);
-      padding: 10px 14px; margin-bottom: 11px;
-      font-size: 14px; color: #78350f; line-height: 1.5;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #92400e;
+      line-height: 1.6;
       white-space: pre-line;
     }
     .weather-label {
-      font-size: 10.5px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: .4px;
-      color: #92400e; margin-bottom: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #b45309;
+      margin-bottom: 6px;
     }
 
-    /* Sources */
-    .sources { margin-top: 13px; border-top: 1px solid var(--border); padding-top: 10px; }
+    /* ── Sources ── */
+    .sources {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
     .src-toggle {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+      font-weight: 500;
     }
     .src-toggle:hover { color: var(--text); }
-    .src-toggle .arr { transition: transform .2s; display: inline-block; }
-    .src-list { margin-top: 9px; display: flex; flex-direction: column; gap: 7px; }
+    .src-toggle .arr {
+      font-size: 10px;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .src-list {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
     .src-list.hidden { display: none; }
-    .src-card { display: flex; gap: 9px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; }
-    .src-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-    .src-name { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text); margin-bottom: 3px; }
-    .src-snippet { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .src-card {
+      display: flex;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .src-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .src-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .src-snippet {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.5;
+    }
 
-    /* Typing indicator */
-    .typing {
-      display: flex; gap: 5px; align-items: center;
-      padding: 14px 18px; background: var(--bg);
-      border-radius: var(--radius); width: fit-content; box-shadow: var(--shadow);
+    /* ── Typing indicator ── */
+    .typing-dots {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 4px 0;
     }
-    .typing span {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--muted); animation: bounce 1.3s infinite;
+    .typing-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      animation: bounce 1.3s infinite;
     }
-    .typing span:nth-child(2) { animation-delay: .18s; }
-    .typing span:nth-child(3) { animation-delay: .36s; }
+    .typing-dots span:nth-child(2) { animation-delay: .16s; }
+    .typing-dots span:nth-child(3) { animation-delay: .32s; }
     @keyframes bounce {
-      0%,60%,100% { transform: translateY(0); opacity: .7; }
-      30% { transform: translateY(-7px); opacity: 1; }
+      0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+      30% { transform: translateY(-5px); opacity: 1; }
     }
 
-    /* Input area */
-    .input-area { border-top: 1px solid var(--border); background: var(--surface); padding: 12px 16px 14px; }
-    .img-preview { display: none; margin-bottom: 10px; position: relative; width: fit-content; }
+    /* ── Welcome ── */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      padding: 60px 24px 40px;
+      gap: 12px;
+    }
+    .welcome-icon {
+      font-size: 40px;
+      margin-bottom: 4px;
+    }
+    .welcome h2 {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+    }
+    .welcome p {
+      color: var(--text-secondary);
+      max-width: 420px;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .chips {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+      max-width: 480px;
+      width: 100%;
+    }
+    .chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      font-family: inherit;
+      transition: background .15s, border-color .15s;
+      line-height: 1.4;
+    }
+    .chip:hover {
+      background: var(--bg-hover);
+      border-color: var(--text-tertiary);
+    }
+
+    /* ── Input area ── */
+    .input-area {
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      padding: 16px 24px 20px;
+      flex-shrink: 0;
+    }
+    .input-wrapper {
+      max-width: var(--max-w);
+      margin: 0 auto;
+    }
+    .img-preview {
+      display: none;
+      margin-bottom: 12px;
+      position: relative;
+      width: fit-content;
+    }
     .img-preview.on { display: block; }
-    .img-preview img { height: 78px; border-radius: 10px; border: 2px solid var(--primary); display: block; }
+    .img-preview img {
+      height: 72px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: block;
+    }
     .rm-img {
-      position: absolute; top: -8px; right: -8px;
-      width: 22px; height: 22px; background: #ef4444; color: #fff;
-      border: 2px solid #fff; border-radius: 50%; font-size: 13px;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 20px;
+      height: 20px;
+      background: var(--text);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
     }
-    .input-row {
-      display: flex; align-items: flex-end; gap: 8px;
-      background: var(--bg); border: 1.5px solid var(--border);
-      border-radius: 24px; padding: 9px 9px 9px 16px;
-      transition: border-color .15s;
+    .input-box {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px 10px 18px;
+      transition: border-color .15s, box-shadow .15s;
     }
-    .input-row:focus-within { border-color: var(--primary); }
+    .input-box:focus-within {
+      border-color: var(--green-600);
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, .1);
+    }
     textarea {
-      flex: 1; background: transparent; border: none; outline: none;
-      resize: none; font-family: inherit; font-size: 15px;
-      line-height: 1.55; max-height: 160px; overflow-y: auto; color: var(--text);
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      max-height: 150px;
+      overflow-y: auto;
+      color: var(--text);
     }
-    textarea::placeholder { color: var(--muted); }
-    .actions { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    textarea::placeholder { color: var(--text-tertiary); }
+    .input-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
     .btn-icon {
-      width: 36px; height: 36px; border-radius: 50%; border: none;
-      cursor: pointer; background: transparent; color: var(--muted); font-size: 19px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background .15s, color .15s;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-tertiary);
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .12s, color .12s;
     }
-    .btn-icon:hover { background: var(--border); color: var(--text); }
+    .btn-icon:hover {
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+    }
     .btn-send {
-      width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
-      background: var(--primary); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      transition: background .15s, opacity .15s;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: var(--green-600);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .12s, opacity .12s;
     }
-    .btn-send:hover    { background: var(--primary-dark); }
-    .btn-send:disabled { opacity: .35; cursor: not-allowed; }
-    .hint { font-size: 11.5px; color: var(--muted); text-align: center; margin-top: 8px; }
+    .btn-send:hover { background: var(--green-700); }
+    .btn-send:disabled { opacity: .3; cursor: not-allowed; }
+    .hint {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-align: center;
+      margin-top: 8px;
+    }
 
-    /* Drag overlay */
+    /* ── Drag overlay ── */
     .app.drag::after {
-      content: '📎 Solte a imagem aqui';
-      position: fixed; inset: 0; background: rgba(22,163,74,.08);
-      border: 3px dashed var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; font-weight: 600; color: var(--primary);
-      z-index: 200; pointer-events: none;
+      content: 'Solte a imagem aqui';
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,.92);
+      border: 2px dashed var(--green-600);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--green-600);
+      z-index: 200;
+      pointer-events: none;
+      border-radius: var(--radius);
+      margin: 8px;
     }
 
-    @media (max-width: 600px) {
-      .app { max-width: 100%; box-shadow: none; }
-      .messages { padding: 18px 12px; gap: 20px; }
-      .bubble { max-width: 88%; }
-      .header { padding: 12px 14px; }
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .header { padding: 10px 16px; }
+      .msg-inner { padding: 0 16px; }
+      .msg { padding: 20px 0; }
+      .input-area { padding: 12px 16px 16px; }
+      .chips { grid-template-columns: 1fr; }
+      .welcome { padding: 40px 16px 24px; }
+      .welcome h2 { font-size: 20px; }
+      .user-image { max-width: 200px; }
     }
   </style>
 </head>
@@ -255,72 +512,74 @@
 <div class="app" id="app">
 
   <header class="header">
-    <div class="logo">🌱</div>
-    <div>
-      <div class="header-title">Agro Assistente</div>
-      <div class="header-sub">Baseado nos Manuais Técnicos da EMBRAPA</div>
+    <div class="header-brand">
+      <div class="header-icon">&#x1F33F;</div>
+      <div class="header-text">
+        <h1>Agro Assistente</h1>
+        <span>Seu agronomo virtual 24/7</span>
+      </div>
     </div>
-    <div class="status">
+    <div class="header-status">
       <div class="dot" id="dot"></div>
-      <span id="status-label">Conectando…</span>
+      <span id="status-label">Conectando...</span>
     </div>
   </header>
 
   <div class="messages" id="messages">
     <div class="welcome" id="welcome">
-      <div class="welcome-icon">🌾</div>
+      <div class="welcome-icon">&#x1F33E;</div>
       <h2>Como posso ajudar?</h2>
-      <p>Pergunte sobre manejo, doenças, pragas, adubação ou envie uma foto da sua planta para diagnóstico.</p>
+      <p>Pergunte sobre manejo, doencas, pragas ou envie uma foto da lavoura para diagnostico assistido por IA.</p>
       <div class="chips">
-        <button class="chip" onclick="suggest(this)">Ferrugem asiática na soja</button>
-        <button class="chip" onclick="suggest(this)">Dose de nitrogênio para milho</button>
+        <button class="chip" onclick="suggest(this)">Ferrugem asiatica na soja</button>
+        <button class="chip" onclick="suggest(this)">Dose de nitrogenio para milho</button>
         <button class="chip" onclick="suggest(this)">Como fazer calagem do solo?</button>
         <button class="chip" onclick="suggest(this)">Lagarta-do-cartucho no milho</button>
-        <button class="chip" onclick="suggest(this)">Vacas em lactação — nutrição</button>
-        <button class="chip" onclick="suggest(this)">Irrigação por gotejamento em hortaliças</button>
       </div>
     </div>
   </div>
 
   <div class="input-area">
-    <div class="img-preview" id="img-preview">
-      <img id="preview-src" src="" alt="">
-      <button class="rm-img" onclick="clearImage()">×</button>
-    </div>
-    <div class="input-row">
-      <textarea id="input" rows="1"
-        placeholder="Pergunte sobre manejo, doenças, pragas…"
-        onkeydown="onKey(event)" oninput="resize(this)"></textarea>
-      <div class="actions">
-        <input type="file" id="file" accept="image/*" style="display:none" onchange="onFile(this)">
-        <button class="btn-icon" onclick="document.getElementById('file').click()" title="Anexar foto">📎</button>
-        <button class="btn-send" id="send-btn" onclick="send()" title="Enviar (Enter)">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5"
-               stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
+    <div class="input-wrapper">
+      <div class="img-preview" id="img-preview">
+        <img id="preview-src" src="" alt="">
+        <button class="rm-img" onclick="clearImage()">&times;</button>
       </div>
+      <div class="input-box">
+        <textarea id="input" rows="1"
+          placeholder="Pergunte sobre manejo, doencas, pragas..."
+          onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+        <div class="input-actions">
+          <input type="file" id="file" accept="image/*" style="display:none" onchange="onFile(this)">
+          <button class="btn-icon" onclick="document.getElementById('file').click()" title="Anexar foto">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <button class="btn-send" id="send-btn" onclick="send()" title="Enviar (Enter)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <p class="hint">Enter para enviar &middot; Shift+Enter nova linha &middot; Arraste uma foto</p>
     </div>
-    <p class="hint">Enter para enviar · Shift+Enter nova linha · Arraste uma foto para a janela</p>
   </div>
 
 </div>
 <script>
-  const WS_URL = 'ws://localhost:8080';
+  const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 
   let ws, busy = false, imgB64 = null;
-  // Streaming state
   let streamBody = null, streamRaw = '', streamMeta = null;
 
-  /* ── Connection ── */
   function connect() {
     ws = new WebSocket(WS_URL);
     ws.onopen    = () => setStatus('ok',  'Conectado');
     ws.onerror   = () => setStatus('err', 'Erro');
-    ws.onclose   = () => { setStatus('', 'Desconectado — reconectando…'); setTimeout(connect, 3000); };
+    ws.onclose   = () => { setStatus('', 'Reconectando...'); setTimeout(connect, 3000); };
     ws.onmessage = (e) => onMsg(JSON.parse(e.data));
   }
 
@@ -329,17 +588,13 @@
     document.getElementById('status-label').textContent = txt;
   }
 
-  /* ── Streaming message handler ── */
   function onMsg(data) {
     if (data.type === 'meta') {
-      // RAG & other pre-work is done; LLM is about to start.
       removeTyping();
       streamMeta = data;
       streamRaw  = '';
       streamBody = createShell(data);
-
     } else if (data.type === 'token') {
-      // First token can arrive before 'meta' if the path is very fast.
       if (!streamBody) {
         removeTyping();
         streamMeta = { intent: 'rag', sources: [] };
@@ -347,20 +602,16 @@
         streamBody = createShell(streamMeta);
       }
       streamRaw += data.content;
-      streamBody.textContent = streamRaw;
+      streamBody.innerHTML = fmt(streamRaw);
       scrollBottom();
-
     } else if (data.type === 'done') {
       if (streamBody) {
-        // Apply rich formatting now that the full text is available.
         streamBody.classList.remove('streaming');
-        streamBody.classList.add('formatted');
         streamBody.innerHTML = fmt(streamRaw);
-        if (streamMeta?.sources?.length) appendSources(streamBody.closest('.bubble'), streamMeta.sources);
+        if (streamMeta?.sources?.length) appendSources(streamBody.closest('.msg-content'), streamMeta.sources);
       }
       streamBody = null; streamRaw = ''; streamMeta = null;
       setBusy(false);
-
     } else if (data.type === 'error') {
       removeTyping();
       if (streamBody) { streamBody.textContent = data.message || 'Erro.'; streamBody.classList.remove('streaming'); }
@@ -369,7 +620,6 @@
     }
   }
 
-  /* ── Send ── */
   function send() {
     const inp  = document.getElementById('input');
     const text = inp.value.trim();
@@ -386,7 +636,6 @@
   function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
   function suggest(btn) { document.getElementById('input').value = btn.textContent; resize(document.getElementById('input')); send(); }
 
-  /* ── Image ── */
   function onFile(inp) {
     const f = inp.files[0]; if (!f) return;
     const r = new FileReader();
@@ -405,6 +654,22 @@
     document.getElementById('img-preview').classList.remove('on');
   }
 
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (!blob) return;
+        const r = new FileReader();
+        r.onload = ev => setPreview(ev.target.result);
+        r.readAsDataURL(blob);
+        return;
+      }
+    }
+  });
+
   const app = document.getElementById('app');
   app.addEventListener('dragover',  e => { e.preventDefault(); app.classList.add('drag'); });
   app.addEventListener('dragleave', e => { if (!app.contains(e.relatedTarget)) app.classList.remove('drag'); });
@@ -416,16 +681,18 @@
     }
   });
 
-  /* ── DOM helpers ── */
   function hideWelcome() { document.getElementById('welcome')?.remove(); }
 
   function appendUser(text, b64) {
     const m = el('div', 'msg user');
     m.innerHTML = `
-      <div class="avatar">Eu</div>
-      <div class="bubble">
-        ${b64 ? `<div class="user-thumb"><img src="data:image/jpeg;base64,${b64}" alt=""></div>` : ''}
-        ${text ? `<div class="body">${esc(text)}</div>` : ''}
+      <div class="msg-inner">
+        <div class="msg-avatar">Eu</div>
+        <div class="msg-content">
+          <div class="msg-role">Voce</div>
+          ${text ? `<div class="msg-body">${esc(text)}</div>` : ''}
+          ${b64 ? `<div class="user-image"><img src="data:image/jpeg;base64,${b64}" alt="Foto enviada"></div>` : ''}
+        </div>
       </div>`;
     attach(m);
   }
@@ -433,54 +700,55 @@
   function appendTyping() {
     const m = el('div', 'msg assistant'); m.id = 'typing';
     m.innerHTML = `
-      <div class="avatar">🌱</div>
-      <div class="bubble">
-        <div class="typing"><span></span><span></span><span></span></div>
+      <div class="msg-inner">
+        <div class="msg-avatar">&#x1F33F;</div>
+        <div class="msg-content">
+          <div class="msg-role">Agro Assistente</div>
+          <div class="typing-dots"><span></span><span></span><span></span></div>
+        </div>
       </div>`;
     attach(m);
   }
 
   function removeTyping() { document.getElementById('typing')?.remove(); }
 
-  // Creates the assistant message shell and returns the .body div for token injection.
   function createShell(meta) {
-    const labels = { rag: '📚 Manual EMBRAPA', vision: '🔬 Diagnóstico Visual', weather: '🌤️ Clima' };
-    const diagHtml = meta.visionDiagnosis
-      ? `<div class="diagnosis"><strong>Análise da imagem</strong>${esc(meta.visionDiagnosis)}</div>`
-      : '';
+    const labels = { rag: 'Manual EMBRAPA', vision: 'Diagnostico Visual', weather: 'Clima + Manual' };
     const weatherHtml = meta.weather
-      ? `<div class="weather-card"><div class="weather-label">🌡️ Dados climáticos consultados</div>${esc(meta.weather)}</div>`
+      ? `<div class="weather-card"><div class="weather-label">Dados climaticos consultados</div>${esc(meta.weather)}</div>`
       : '';
     const m = el('div', 'msg assistant');
     m.innerHTML = `
-      <div class="avatar">🌱</div>
-      <div class="bubble">
-        <span class="badge ${meta.intent || 'rag'}">${labels[meta.intent] || '📚 Manual EMBRAPA'}</span>
-        ${weatherHtml}
-        ${diagHtml}
-        <div class="body streaming"></div>
+      <div class="msg-inner">
+        <div class="msg-avatar">&#x1F33F;</div>
+        <div class="msg-content">
+          <div class="msg-role">Agro Assistente</div>
+          <span class="badge ${meta.intent || 'rag'}">${labels[meta.intent] || 'Manual EMBRAPA'}</span>
+          ${weatherHtml}
+          <div class="msg-body streaming"></div>
+        </div>
       </div>`;
     attach(m);
-    return m.querySelector('.body');
+    return m.querySelector('.msg-body');
   }
 
-  function appendSources(bubble, sources) {
+  function appendSources(contentEl, sources) {
     const div = el('div', 'sources');
     div.innerHTML = `
       <div class="src-toggle" onclick="toggleSrc(this)">
-        <span class="arr">▶</span>&nbsp;${sources.length} fonte${sources.length > 1 ? 's' : ''} dos manuais
+        <span class="arr">&#9654;</span>&nbsp;${sources.length} fonte${sources.length > 1 ? 's' : ''} dos manuais
       </div>
       <div class="src-list hidden">
         ${sources.map(s => `
           <div class="src-card">
-            <span class="src-icon">📄</span>
+            <span class="src-icon">&#128196;</span>
             <div>
-              <div class="src-name">${esc(s.title)} · p. ${s.page ?? '?'}</div>
+              <div class="src-name">${esc(s.title)} &middot; p. ${s.page ?? '?'}</div>
               <div class="src-snippet">${esc((s.content || '').slice(0, 200))}</div>
             </div>
           </div>`).join('')}
       </div>`;
-    bubble.appendChild(div);
+    contentEl.appendChild(div);
     scrollBottom();
   }
 
@@ -489,38 +757,35 @@
     btn.querySelector('.arr').textContent = btn.nextElementSibling.classList.contains('hidden') ? '▶' : '▼';
   }
 
-  /* ── Utils ── */
   function setBusy(v) { busy = v; document.getElementById('send-btn').disabled = v; }
-
-  function resize(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; }
-
+  function resize(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 150) + 'px'; }
   function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
-
   function attach(node) { const b = document.getElementById('messages'); b.appendChild(node); scrollBottom(); }
-
   function scrollBottom() { const b = document.getElementById('messages'); b.scrollTop = b.scrollHeight; }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  function esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // Rich formatter applied once streaming is complete.
   function fmt(raw) {
     let s = esc(raw);
+    s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     const lines = s.split('\n');
     let out = '', inList = false;
-    for (const line of lines) {
-      const m = line.match(/^(\d+)\.\s+(.*)/);
-      if (m) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const li = line.match(/^(\d+)\.\s+(.*)/);
+      if (li) {
         if (!inList) { out += '<ol>'; inList = true; }
-        out += `<li>${m[2]}</li>`;
+        out += `<li>${li[2]}</li>`;
       } else {
         if (inList) { out += '</ol>'; inList = false; }
-        out += line.trim() ? `<p>${line}</p>` : '';
+        if (line.trim()) {
+          const isLast = i === lines.length - 1;
+          out += isLast ? `<p>${line}` : `<p>${line}</p>`;
+        } else if (i < lines.length - 1) {
+          out += '<br>';
+        }
       }
     }
     if (inList) out += '</ol>';
-    out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     return out;
   }
 
