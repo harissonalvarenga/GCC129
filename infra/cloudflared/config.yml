@@ -1,0 +1,7 @@
+tunnel: 2f2b8a06-3992-4d68-85f3-1a0818c6837d
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: guilhermeluizdeazevedo.com.br
+    service: http://frontend:80
+  - service: http_status:404
