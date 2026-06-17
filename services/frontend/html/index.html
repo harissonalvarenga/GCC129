@@ -288,25 +288,49 @@
       line-height: 1.5;
     }
 
-    /* ── Typing indicator ── */
-    .typing-dots {
+    /* ── Typing / status indicator ── */
+    .status-bar {
       display: flex;
-      gap: 4px;
       align-items: center;
+      gap: 8px;
       padding: 4px 0;
+      font-size: 13px;
+      color: var(--text-secondary);
     }
-    .typing-dots span {
-      width: 6px;
-      height: 6px;
+    .status-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green-600);
       border-radius: 50%;
-      background: var(--text-tertiary);
-      animation: bounce 1.3s infinite;
+      animation: spin .7s linear infinite;
     }
-    .typing-dots span:nth-child(2) { animation-delay: .16s; }
-    .typing-dots span:nth-child(3) { animation-delay: .32s; }
-    @keyframes bounce {
-      0%, 60%, 100% { transform: translateY(0); opacity: .4; }
-      30% { transform: translateY(-5px); opacity: 1; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Copy button ── */
+    .btn-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 12px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .btn-copy:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+      border-color: var(--text-tertiary);
+    }
+    .btn-copy.copied {
+      color: var(--green-600);
+      border-color: var(--green-600);
     }
 
     /* ── Welcome ── */
@@ -589,7 +613,9 @@
   }
 
   function onMsg(data) {
-    if (data.type === 'meta') {
+    if (data.type === 'status') {
+      updateStatus(data.text);
+    } else if (data.type === 'meta') {
       removeTyping();
       streamMeta = data;
       streamRaw  = '';
@@ -608,7 +634,9 @@
       if (streamBody) {
         streamBody.classList.remove('streaming');
         streamBody.innerHTML = fmt(streamRaw);
-        if (streamMeta?.sources?.length) appendSources(streamBody.closest('.msg-content'), streamMeta.sources);
+        const contentEl = streamBody.closest('.msg-content');
+        if (streamMeta?.sources?.length) appendSources(contentEl, streamMeta.sources);
+        appendCopyBtn(contentEl, streamRaw);
       }
       streamBody = null; streamRaw = ''; streamMeta = null;
       setBusy(false);
@@ -704,13 +732,38 @@
         <div class="msg-avatar">&#x1F33F;</div>
         <div class="msg-content">
           <div class="msg-role">Agro Assistente</div>
-          <div class="typing-dots"><span></span><span></span><span></span></div>
+          <div class="status-bar" id="status-text">
+            <div class="status-spinner"></div>
+            <span>Processando...</span>
+          </div>
         </div>
       </div>`;
     attach(m);
   }
 
+  function updateStatus(text) {
+    const el = document.getElementById('status-text');
+    if (el) { el.querySelector('span').textContent = text; scrollBottom(); }
+  }
+
   function removeTyping() { document.getElementById('typing')?.remove(); }
+
+  function appendCopyBtn(contentEl, rawText) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-copy';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copiar';
+    btn.onclick = () => {
+      navigator.clipboard.writeText(rawText).then(() => {
+        btn.classList.add('copied');
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copiar';
+        }, 2000);
+      });
+    };
+    contentEl.appendChild(btn);
+  }
 
   function createShell(meta) {
     const labels = { rag: 'Manual EMBRAPA', vision: 'Diagnostico Visual', weather: 'Clima + Manual' };
