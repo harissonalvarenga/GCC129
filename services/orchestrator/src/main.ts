@@ -61,6 +61,7 @@ app.post(
   async (req, res) => {
     try {
       const message = (req.body.message as string) || "";
+      const history: { role: string; content: string }[] = req.body.history ?? [];
       const imageBuffer: Buffer | null =
         req.file?.buffer ??
         (req.body.imageBase64
@@ -104,6 +105,7 @@ app.post(
             chunks: relevant,
             visionDiagnosis,
             ...(weather && { weather }),
+            history,
           });
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;
@@ -126,7 +128,7 @@ app.post(
           writeLine(res, { type: "meta", intent, ...(weather && { weather }), sources: relevant });
 
           const tokens = (relevant.length > 0 || weather)
-            ? streamAnswer({ question: message, chunks: relevant, ...(weather && { weather }) })
+            ? streamAnswer({ question: message, chunks: relevant, ...(weather && { weather }), history })
             : notFound();
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;
@@ -139,7 +141,7 @@ app.post(
           writeLine(res, { type: "meta", intent, sources: relevant });
 
           const tokens = relevant.length > 0
-            ? streamAnswer({ question: message, chunks: relevant })
+            ? streamAnswer({ question: message, chunks: relevant, history })
             : notFound();
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;

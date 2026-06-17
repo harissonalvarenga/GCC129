@@ -13,44 +13,57 @@ const SYSTEM_PROMPT =
   "Se o conhecimento fornecido não cobrir a pergunta, diga brevemente que não tem informação suficiente. " +
   "NÃO invente dados agronômicos.";
 
+interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
+
 export interface SynthesisInput {
   question: string;
   chunks: Chunk[];
   visionDiagnosis?: string;
   weather?: string;
+  history?: { role: string; content: string }[];
 }
 
-function buildPrompt(input: SynthesisInput): string {
-  const blocks: string[] = [SYSTEM_PROMPT];
+function buildMessages(input: SynthesisInput): ChatMessage[] {
+  const contextBlocks: string[] = [];
 
   if (input.visionDiagnosis) {
-    blocks.push(
+    contextBlocks.push(
       `OBSERVAÇÃO VISUAL DA LAVOURA:\n${input.visionDiagnosis}\n` +
       `Use esta observação junto com o conhecimento técnico para orientar o agricultor sobre manejo adequado.`
     );
   }
   if (input.weather) {
-    blocks.push(`CONDIÇÕES CLIMÁTICAS:\n${input.weather}`);
+    contextBlocks.push(`CONDIÇÕES CLIMÁTICAS:\n${input.weather}`);
   }
   if (input.chunks.length > 0) {
     const context = input.chunks
       .map((c) => `[Fonte: ${c.title} | Página ${c.page ?? "?"}]\n${c.content}`)
       .join("\n\n---\n\n");
-    blocks.push(`CONHECIMENTO TÉCNICO:\n${context}`);
+    contextBlocks.push(`CONHECIMENTO TÉCNICO:\n${context}`);
   }
-  blocks.push(`PERGUNTA DO AGRICULTOR:\n${input.question}`);
-  blocks.push("RESPOSTA:");
-  return blocks.join("\n\n");
+
+  const system = contextBlocks.length > 0
+    ? SYSTEM_PROMPT + "\n\n" + contextBlocks.join("\n\n")
+    : SYSTEM_PROMPT;
+
+  const messages: ChatMessage[] = [{ role: "system", content: system }];
+
+  for (const turn of input.history ?? []) {
+    const role = turn.role === "assistant" ? "assistant" : "user";
+    messages.push({ role, content: turn.content });
+  }
+
+  messages.push({ role: "user", content: input.question });
+  return messages;
 }
 
-// Streams tokens from Ollama as they are generated.
 export async function* streamAnswer(input: SynthesisInput): AsyncGenerator<string> {
-  const prompt = buildPrompt(input);
+  const messages = buildMessages(input);
 
-  const response = await fetch(`${LLM_URL}/api/generate`, {
+  const response = await fetch(`${LLM_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: LLM_MODEL, prompt, stream: true }),
+    body: JSON.stringify({ model: LLM_MODEL, messages, stream: true }),
   });
 
   if (!response.ok || !response.body) {
@@ -70,8 +83,8 @@ export async function* streamAnswer(input: SynthesisInput): AsyncGenerator<strin
     for (const line of lines) {
       if (!line.trim()) continue;
       try {
-        const obj = JSON.parse(line) as { response?: string; done?: boolean };
-        if (obj.response) yield obj.response;
+        const obj = JSON.parse(line) as { message?: { content?: string }; done?: boolean };
+        if (obj.message?.content) yield obj.message.content;
         if (obj.done) return;
       } catch {}
     }
