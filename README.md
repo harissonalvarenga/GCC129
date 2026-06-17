@@ -28,18 +28,22 @@ O agricultor interage via chat (texto, foto, ou ambos). O sistema executa três 
 
 As três fontes de contexto se combinam livremente: uma pergunta com foto sobre o clima ativa visão + clima + RAG numa única resposta.
 
+O chat mantém **histórico de conversa** por sessão WebSocket (até 10 turnos). O agricultor pode fazer perguntas de acompanhamento ("e como faço a prevenção?") sem repetir o contexto — o LLM recebe os turnos anteriores via `/api/chat` do Ollama.
+
 ---
 
 ## Arquitetura
 
-Todos os serviços rodam localmente via Docker Compose, com a GPU dedicada à inferência LLM.
+Todos os serviços rodam localmente via Docker Compose, com a GPU dedicada à inferência LLM. O acesso externo é feito via **Cloudflare Tunnel** — sem abrir portas, sem IP fixo.
 
 ```text
-                      ┌────────────────┐
-                      │   Frontend     │ :3000
+  Navegador ──HTTPS──▶ Cloudflare (borda) ──túnel QUIC──▶ cloudflared ──▶ nginx
+                                                                          │
+                      ┌────────────────┐                                  │
+                      │   Frontend     │ :3000 ◄──────────────────────────┘
                       │  (nginx + JS)  │
                       └───────┬────────┘
-                              │ WebSocket
+                              │ /ws (proxy reverso)
                       ┌───────▼────────┐
                       │    Gateway     │ :8080
                       │   (WS → HTTP)  │
@@ -90,6 +94,7 @@ Agricultor: [foto do milho] "O clima em Lavras afetou minha plantação?"
 | Transparência de Localização | Serviços se comunicam por nomes DNS do Docker (`rag-service`, `llm-service`) sem conhecer IPs |
 | Transparência de Acesso | Gateway traduz WebSocket <-> HTTP/NDJSON; frontend desconhece a topologia interna |
 | Tolerância a Falhas | Weather degrada graciosamente (erro de geocoding não bloqueia RAG); Vision faz fallback de query; intent híbrido (visão + clima) responde com o que estiver disponível |
+| Transparência de Migração | Cloudflare Tunnel permite migrar o sistema entre máquinas sem alterar DNS nem configurar firewalls |
 | Desacoplamento | MCP Server expõe ferramentas via protocolo MCP padrão (SSE); RAG é um retriever puro; síntese fica isolada no orquestrador |
 | Escalabilidade | Orquestrador stateless; RAG e Vision são serviços independentes replicáveis |
 
@@ -99,7 +104,7 @@ Agricultor: [foto do milho] "O clima em Lavras afetou minha plantação?"
 
 | Camada | Tecnologia |
 | --- | --- |
-| Frontend | HTML/JS vanilla + WebSocket (nginx) |
+| Frontend | HTML/JS vanilla + WebSocket (nginx), streaming formatado em tempo real |
 | Gateway | Node.js + `ws` (WebSocket -> HTTP bridge) |
 | Orquestrador | Node.js + Express (classificação, síntese, streaming NDJSON) |
 | RAG Service | Python + FastAPI + pgvector + sentence-transformers |
@@ -110,6 +115,7 @@ Agricultor: [foto do milho] "O clima em Lavras afetou minha plantação?"
 | MCP Server | Node.js + `@modelcontextprotocol/sdk` + Express (SSE) |
 | Clima | Open-Meteo Forecast API (sem chave de API) |
 | LLM | Ollama — Llama 3.1 8B (síntese) + LLaVA (visão) |
+| Túnel / HTTPS | Cloudflare Tunnel (`cloudflared`) — HTTPS automático, sem IP fixo |
 | Containerização | Docker Compose com rede bridge isolada |
 
 ---
@@ -118,7 +124,7 @@ Agricultor: [foto do milho] "O clima em Lavras afetou minha plantação?"
 
 ### Gateway — `ws://localhost:8080` (WebSocket)
 
-O frontend abre uma conexão WebSocket. Cada mensagem é um JSON:
+O frontend abre uma conexão WebSocket. O gateway mantém o histórico de conversa por conexão (máx. 20 turnos) e o envia ao orquestrador a cada turno. Cada mensagem é um JSON:
 
 ```jsonc
 // Envio (cliente -> servidor)
@@ -126,6 +132,7 @@ O frontend abre uma conexão WebSocket. Cada mensagem é um JSON:
   "message": "O clima em Lavras afetou meu milho?",
   "imageBase64": "..." // opcional — base64 da foto
 }
+// O gateway anexa automaticamente o campo "history" ao encaminhar para o orquestrador.
 ```
 
 A resposta é um fluxo NDJSON (uma linha JSON por mensagem WebSocket):
@@ -148,7 +155,11 @@ A resposta é um fluxo NDJSON (uma linha JSON por mensagem WebSocket):
 // Request (multipart/form-data ou JSON)
 {
   "message": "Ferrugem asiática na soja",
-  "imageBase64": "..."  // opcional
+  "imageBase64": "...",  // opcional
+  "history": [           // opcional — turnos anteriores da conversa
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ]
 }
 
 // Response: stream NDJSON (mesmo formato do WebSocket acima)
@@ -232,9 +243,40 @@ Coloque os PDFs dos manuais Embrapa em `docs/` e execute o script de ingestão:
 docker compose exec rag-service python -m scripts.ingest_docs
 ```
 
-### 4. Acessar
+### 4. Acessar (local)
 
 Abra `http://localhost:3000` no navegador.
+
+### 5. Expor no domínio (Cloudflare Tunnel)
+
+O sistema fica acessível em `https://guilhermeluizdeazevedo.com.br` sem abrir portas nem ter IP fixo.
+
+1. Crie um túnel em **Cloudflare Zero Trust → Networks → Connectors → Create a tunnel**.
+2. Extraia as credenciais do token gerado:
+
+   ```bash
+   echo "SEU_TOKEN_eyJ..." | base64 -d
+   # saída: {"a":"<AccountTag>","t":"<TunnelID>","s":"<TunnelSecret>"}
+   ```
+
+3. Copie o exemplo e preencha:
+
+   ```bash
+   cp infra/cloudflared/credentials.json.example infra/cloudflared/credentials.json
+   # edite com os valores de AccountTag, TunnelID e TunnelSecret
+   ```
+
+4. Edite `infra/cloudflared/config.yml` — substitua `TUNNEL_ID_AQUI` pelo seu TunnelID.
+5. Na Cloudflare DNS, crie um **CNAME** do ápice (`guilhermeluizdeazevedo.com.br`) apontando para `<TunnelID>.cfargotunnel.com` com proxy **ligado** (nuvem laranja).
+6. Suba tudo:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+O nginx do frontend faz proxy reverso do path `/ws` para o gateway WebSocket, então um único hostname serve tanto os arquivos estáticos quanto a conexão em tempo real.
+
+> **SSL/TLS**: deixe o modo em **Full** em SSL/TLS → Overview. O certificado é emitido automaticamente pela Cloudflare.
 
 ---
 
@@ -244,16 +286,22 @@ Abra `http://localhost:3000` no navegador.
 GCC129/
 ├── infra/
 │   ├── docker-compose.yml        # Orquestração de todos os serviços
+│   ├── cloudflared/
+│   │   ├── config.yml            # Roteamento do túnel (hostname → serviço)
+│   │   ├── credentials.json      # Segredo — NÃO versionado
+│   │   └── credentials.json.example
 │   ├── db-init/
 │   │   ├── rag-db/init.sql       # Schema pgvector (HNSW index)
 │   │   └── vision-db/init.sql
 │   └── .env.example
 │
 ├── services/
-│   ├── frontend/html/
-│   │   └── index.html            # Chat UI (vanilla JS + WebSocket)
+│   ├── frontend/
+│   │   ├── nginx.conf            # Proxy reverso: / → static, /ws → gateway
+│   │   └── html/
+│   │       └── index.html        # Chat UI (vanilla JS + WebSocket)
 │   │
-│   ├── gateway/                  # WebSocket -> HTTP bridge
+│   ├── gateway/                  # WebSocket → HTTP bridge
 │   │   └── src/index.ts
 │   │
 │   ├── orchestrator/             # Cérebro do sistema
