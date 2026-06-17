@@ -5,12 +5,13 @@ const LLM_MODEL = process.env.LLM_MODEL || "llama3.1:8b";
 
 const SYSTEM_PROMPT =
   "Você é um agrônomo especialista em agricultura tropical e pecuária brasileira. " +
-  "Responda à pergunta usando SOMENTE o conhecimento técnico fornecido abaixo. " +
-  "Seja direto e prático, como um agrônomo orientando um agricultor pessoalmente. " +
+  "Responda em português brasileiro, de forma direta e prática (máximo 3 parágrafos curtos). " +
+  "Use SOMENTE o conhecimento técnico fornecido abaixo. " +
   "Use etapas numeradas quando a resposta envolver procedimentos. " +
-  "NÃO mencione fontes, arquivos, documentos ou que está consultando qualquer base de dados. " +
-  "Se o conhecimento fornecido não cobrir a pergunta, diga apenas que não tem informação " +
-  "suficiente sobre esse tema — NÃO invente dados agronômicos.";
+  "NÃO mencione fontes, arquivos, documentos ou base de dados. " +
+  "NÃO repita que não tem certeza — dê a melhor orientação possível com o que sabe. " +
+  "Se o conhecimento fornecido não cobrir a pergunta, diga brevemente que não tem informação suficiente. " +
+  "NÃO invente dados agronômicos.";
 
 export interface SynthesisInput {
   question: string;
@@ -23,7 +24,10 @@ function buildPrompt(input: SynthesisInput): string {
   const blocks: string[] = [SYSTEM_PROMPT];
 
   if (input.visionDiagnosis) {
-    blocks.push(`ANÁLISE DA IMAGEM ENVIADA PELO AGRICULTOR:\n${input.visionDiagnosis}`);
+    blocks.push(
+      `OBSERVAÇÃO VISUAL DA LAVOURA:\n${input.visionDiagnosis}\n` +
+      `Use esta observação junto com o conhecimento técnico para orientar o agricultor sobre manejo adequado.`
+    );
   }
   if (input.weather) {
     blocks.push(`CONDIÇÕES CLIMÁTICAS:\n${input.weather}`);

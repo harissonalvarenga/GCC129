@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 
-import { classifyIntent } from "./agent";
+import { classifyIntent, hasWeatherIntent } from "./agent";
 import { callVisionService, callRagService } from "./toolCaller";
 import { streamAnswer } from "./synthesis";
 import { getWeather, extractCity } from "./mcpClient";
@@ -31,6 +31,26 @@ function bestScore(chunks: { rerank_score?: number | null }[]): number {
   return chunks.reduce((m, c) => Math.max(m, c.rerank_score ?? 0), -Infinity);
 }
 
+function stripWeatherNoise(msg: string): string {
+  // First try simple tail extraction: "...para plantar soja"
+  const tail = msg.match(/(?:para|de)\s+(.{4,})$/i);
+  if (tail) return tail[1].replace(/[?.!]+$/, "");
+
+  // Fallback: remove weather/location tokens, keep the agricultural core
+  const stripped = msg
+    .replace(/\b(?:baseado|com base)\s+n[oa]s?\b/gi, "")
+    .replace(/\b(?:tempo|clima|climático|climática|previsão|temperatura|chuva|geada|seca|umidade)\b/gi, "")
+    .replace(/(?:aqui\s+)?em\s+[A-ZÀ-Ú][\wÀ-ú]*/g, "")
+    .replace(/\b(?:como\s+(?:está|esta|fica))\b/gi, "")
+    .replace(/\b[oa]s?\b/gi, "")
+    .replace(/[,;]\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^[?\s.,;!]+|[?\s.,;!]+$/g, "");
+
+  return stripped.length >= 4 ? stripped : msg;
+}
+
 async function* notFound(): AsyncGenerator<string> {
   yield "Não tenho informações suficientes sobre esse tema para orientar com segurança. Tente reformular sua pergunta ou consulte um agrônomo local.";
 }
@@ -56,29 +76,57 @@ app.post(
 
         case "vision": {
           const visionDiagnosis = await callVisionService(imageBuffer!);
-          const ragQuery = message ? `${message}. ${visionDiagnosis}` : visionDiagnosis;
-          const chunks = await callRagService(ragQuery);
-          const relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
+          console.log("Vision description:", visionDiagnosis);
 
-          writeLine(res, { type: "meta", intent, visionDiagnosis, sources: relevant });
+          // Check if the user also asked about weather/climate
+          let weather: string | undefined;
+          if (message && hasWeatherIntent(message)) {
+            const city = extractCity(message);
+            try {
+              const w = await getWeather(city);
+              if (!w.startsWith("Erro")) weather = w;
+            } catch {}
+          }
 
-          const tokens = relevant.length > 0
-            ? streamAnswer({ question: message || "O que há com esta planta e como tratar?", chunks: relevant, visionDiagnosis })
-            : notFound();
+          const ragQuery = visionDiagnosis;
+          let chunks = await callRagService(ragQuery);
+          let relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
+
+          if (relevant.length === 0 && message) {
+            chunks = await callRagService(message);
+            relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
+          }
+
+          writeLine(res, { type: "meta", intent, ...(weather && { weather }), sources: relevant });
+
+          const tokens = streamAnswer({
+            question: message || "O que há com esta planta e como tratar?",
+            chunks: relevant,
+            visionDiagnosis,
+            ...(weather && { weather }),
+          });
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;
         }
 
         case "weather": {
           const city = extractCity(message);
-          const weather = await getWeather(city);
-          const chunks = await callRagService(message);
+
+          // Weather lookup can fail (typo in city, API down) — don't block the RAG answer.
+          let weather: string | undefined;
+          try {
+            const w = await getWeather(city);
+            if (!w.startsWith("Erro")) weather = w;
+          } catch {}
+
+          const ragQuery = stripWeatherNoise(message);
+          const chunks = await callRagService(ragQuery);
           const relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
 
-          writeLine(res, { type: "meta", intent, weather, sources: relevant });
+          writeLine(res, { type: "meta", intent, ...(weather && { weather }), sources: relevant });
 
-          const tokens = relevant.length > 0
-            ? streamAnswer({ question: message, chunks: relevant, weather })
+          const tokens = (relevant.length > 0 || weather)
+            ? streamAnswer({ question: message, chunks: relevant, ...(weather && { weather }) })
             : notFound();
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;
