@@ -30,6 +30,8 @@ As três fontes de contexto se combinam livremente: uma pergunta com foto sobre 
 
 O chat mantém **histórico de conversa** por sessão WebSocket (até 10 turnos). O agricultor pode fazer perguntas de acompanhamento ("e como faço a prevenção?") sem repetir o contexto — o LLM recebe os turnos anteriores via `/api/chat` do Ollama.
 
+Perguntas fora do domínio agrícola são recusadas com simpatia pelo próprio LLM, que redireciona o usuário para temas que pode ajudar.
+
 ---
 
 ## Arquitetura
