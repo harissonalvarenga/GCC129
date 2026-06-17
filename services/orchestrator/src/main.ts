@@ -51,8 +51,12 @@ function stripWeatherNoise(msg: string): string {
   return stripped.length >= 4 ? stripped : msg;
 }
 
-async function* notFound(): AsyncGenerator<string> {
-  yield "Não tenho informações suficientes sobre esse tema para orientar com segurança. Tente reformular sua pergunta ou consulte um agrônomo local.";
+function outOfScope(question: string, history: { role: string; content: string }[]) {
+  return streamAnswer({
+    question,
+    chunks: [],
+    history,
+  });
 }
 
 app.post(
@@ -76,12 +80,13 @@ app.post(
       switch (intent) {
 
         case "vision": {
+          writeLine(res, { type: "status", text: "Analisando imagem..." });
           const visionDiagnosis = await callVisionService(imageBuffer!);
           console.log("Vision description:", visionDiagnosis);
 
-          // Check if the user also asked about weather/climate
           let weather: string | undefined;
           if (message && hasWeatherIntent(message)) {
+            writeLine(res, { type: "status", text: "Consultando clima..." });
             const city = extractCity(message);
             try {
               const w = await getWeather(city);
@@ -89,6 +94,7 @@ app.post(
             } catch {}
           }
 
+          writeLine(res, { type: "status", text: "Buscando nos manuais..." });
           const ragQuery = visionDiagnosis;
           let chunks = await callRagService(ragQuery);
           let relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
@@ -99,6 +105,7 @@ app.post(
           }
 
           writeLine(res, { type: "meta", intent, ...(weather && { weather }), sources: relevant });
+          writeLine(res, { type: "status", text: "Gerando resposta..." });
 
           const tokens = streamAnswer({
             question: message || "O que há com esta planta e como tratar?",
@@ -112,37 +119,41 @@ app.post(
         }
 
         case "weather": {
+          writeLine(res, { type: "status", text: "Consultando clima..." });
           const city = extractCity(message);
 
-          // Weather lookup can fail (typo in city, API down) — don't block the RAG answer.
           let weather: string | undefined;
           try {
             const w = await getWeather(city);
             if (!w.startsWith("Erro")) weather = w;
           } catch {}
 
+          writeLine(res, { type: "status", text: "Buscando nos manuais..." });
           const ragQuery = stripWeatherNoise(message);
           const chunks = await callRagService(ragQuery);
           const relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
 
           writeLine(res, { type: "meta", intent, ...(weather && { weather }), sources: relevant });
+          writeLine(res, { type: "status", text: "Gerando resposta..." });
 
           const tokens = (relevant.length > 0 || weather)
             ? streamAnswer({ question: message, chunks: relevant, ...(weather && { weather }), history })
-            : notFound();
+            : outOfScope(message, history);
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;
         }
 
         case "rag": {
+          writeLine(res, { type: "status", text: "Buscando nos manuais..." });
           const chunks = await callRagService(message);
           const relevant = chunks.filter(c => (c.rerank_score ?? 0) >= RELEVANCE_THRESHOLD);
 
           writeLine(res, { type: "meta", intent, sources: relevant });
+          writeLine(res, { type: "status", text: "Gerando resposta..." });
 
           const tokens = relevant.length > 0
             ? streamAnswer({ question: message, chunks: relevant, history })
-            : notFound();
+            : outOfScope(message, history);
           for await (const token of tokens) writeLine(res, { type: "token", content: token });
           break;
         }
